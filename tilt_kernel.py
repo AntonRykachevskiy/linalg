@@ -82,7 +82,7 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
     if input_image.shape[2] > 1:
         input_image = input_image[:,:,0]#*0.299 + input_image[:,:,1]*0.587 + input_image[:,:,2]*0.144
 
-    #input_image = input_image.astype(float)
+    input_image = input_image.astype(float)
 
     image_center = np.floor(center)
     focus_size = np.floor(focus_size)
@@ -100,7 +100,7 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
 
     #inp_im = np.hstack((np.zeros((50, 1)),input_image, np.zeros((50,1))))
     #inp_im = np.vstack((np.zeros((1, 52)),inp_im, np.zeros((1, 52))))
-    input_image = input_image.astype(np.uint8)
+    #input_image = input_image.astype(np.uint8)
 
     #input_du = (inp_im[2:,:] - inp_im[:-2,:])[:,1:-1]
     #input_dv = (inp_im[:,2:] - inp_im[:,:-2])[1:-1, :]
@@ -119,6 +119,9 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
     #Dotau = transform.warp(input_image, trfrm)
     Dotau = transform_rak(input_image, tfm_matrix)
 
+    print('rak')
+    plt.imshow(Dotau)
+    plt.show()
     #print "dotau: {0}".format(np.sum(Dotau))
 
     Dotau_series.append(Dotau)
@@ -145,12 +148,16 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
     J = jacobi(du, dv, XData, YData, tau, mode)
     S = constraints(tau, XData, YData, mode)
 
+    print J[0, :]
+    print S
     outer_round=0
     pre_f=0
 
     while 1:
         outer_round=outer_round+1
         A, E, delta_tau = inner_IALM_constraints(Dotau, J, S)
+        #plt.imshow(A)
+        #plt.show()
         #print('asas')
         #if error_sign == -1:
         #    return

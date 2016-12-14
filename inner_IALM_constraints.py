@@ -11,7 +11,7 @@ from skimage import img_as_ubyte
 
 from utils import *
 
-def inner_IALM_constraints(Dotau, J, S_J, tol=1e-7, c=1., mu=-5., max_iter=1):
+def inner_IALM_constraints(Dotau, J, S_J, tol=1e-7, c=1., mu=-5., max_iter=50):
     #well shit then I guess I need to check stuff mu=1.25/np.linalg.norm(Dotau)
     """
     inner_IALM_constraints will solve the programming:
@@ -33,7 +33,7 @@ def inner_IALM_constraints(Dotau, J, S_J, tol=1e-7, c=1., mu=-5., max_iter=1):
     #prep data
     #sorry for a bit of bydlokod
     #if mu == -5.:
-    mu=1.25/np.linalg.norm(Dotau)
+    mu=1.25/np.linalg.norm(Dotau, 2)
 
     m, n = Dotau.shape
     E = np.zeros((m, n))
@@ -60,7 +60,7 @@ def inner_IALM_constraints(Dotau, J, S_J, tol=1e-7, c=1., mu=-5., max_iter=1):
     Y_1 = Dotau
     #print "Y_1:\n:", Y_1
     norm_two = np.linalg.norm(Y_1, 2)
-    norm_inf = np.linalg.norm(Y_1, np.inf)/lmbda #there was some mystery, what does norm_inf=norm(Y_1(:), inf)/lambda mean
+    norm_inf = np.linalg.norm(Y_1.reshape(m*n, 1), np.inf)/lmbda #there was some mystery, what does norm_inf=norm(Y_1(:), inf)/lambda mean
     dual_norm = max(norm_two, norm_inf)
     Y_1 = Y_1 / dual_norm;
     Y_2 = np.zeros((S_J.shape[0], 1)) #this needs to be checked
@@ -70,6 +70,11 @@ def inner_IALM_constraints(Dotau, J, S_J, tol=1e-7, c=1., mu=-5., max_iter=1):
     #stuff stuff stuff stuff stuff
 
 
+    #print "2", norm_two
+    #print "inf", norm_inf
+    #print "dual", dual_norm
+    #print "d", d_norm
+
     #let's now see what's in the main loop
     #ill just initialize stop_criterion to 10tol or something
     stop_criterion = 10*tol
@@ -78,11 +83,17 @@ def inner_IALM_constraints(Dotau, J, S_J, tol=1e-7, c=1., mu=-5., max_iter=1):
 
         inner_round += 1
         temp_0 = Dotau + np.reshape(np.dot(Jo, delta_tau), (m,n)) + Y_1 / mu
+
         temp_1 = temp_0 - E
         U, S, V = np.linalg.svd(temp_1, full_matrices=False)
         S = np.diag(S)
+        #print "U", U
+        #print "S", S
+        print "V", V
         shrinkage_S =(S > 1/mu).astype(int) * (S - 1/mu) #because S is non-negative
-        A = U.dot(shrinkage_S).dot(np.array(np.matrix(V).H))
+        A = U.dot(shrinkage_S).dot(V)
+
+
         #print A.shape
         temp_2 = temp_0 - A
         E = (temp_2 > lmbda/mu).astype(int) * (temp_2 - lmbda/mu) + (temp_2 < -lmbda/mu).astype(int) * (temp_2 + lmbda/mu)
