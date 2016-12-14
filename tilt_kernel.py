@@ -75,7 +75,7 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
 
 
     outer_tol = 5e-5
-    outer_max_iter = 20
+    outer_max_iter = 100
     outer_display_perioud = 1
 
 
@@ -119,9 +119,6 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
     #Dotau = transform.warp(input_image, trfrm)
     Dotau = transform_rak(input_image, tfm_matrix)
 
-    print('rak')
-    plt.imshow(Dotau)
-    plt.show()
     #print "dotau: {0}".format(np.sum(Dotau))
 
     Dotau_series.append(Dotau)
@@ -166,8 +163,10 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
         #if mod(outer_round, outer_display_period) == 0:
         #    disp(['outer_round ',num2str(outer_round),  ', rank(A)=', num2str(rank(A)), ', ||E||_1=', num2str(sum(sum(abs(E))))]);
         #print 'tau dtau', tau, delta_tau
-        print delta_tau
+
         tau=tau + delta_tau
+        print "tau", tau
+        print 'dtau', delta_tau
         print outer_round
 
         tfm_matrix=para2tfm(tau, XData, YData, mode).T
@@ -193,7 +192,7 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
         A_scale = np.linalg.norm(Dotau, 'fro')
         Dotau = Dotau / np.linalg.norm(Dotau, 'fro')
 
-        tau = tfm2para(tfm_matrix, XData, YData, mode)
+        #tau = tfm2para(tfm_matrix, XData, YData, mode)
         J = jacobi(du, dv, XData, YData, tau, mode)
         S = constraints(tau, XData, YData, mode)
 

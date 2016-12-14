@@ -79,7 +79,7 @@ def TILT(input_image, mode, init_points, **kwargs):
     img_size=img_size[:2]
 
     #print 'adasdasd'
-    #input_image = filt.gaussian_filter(args['input_image'],sigma = math.ceil(args['blur_kernel_sigma_k']*max(img_size)/50))
+    input_image = filt.gaussian_filter(args['input_image'],sigma = math.ceil(args['blur_kernel_sigma_k']*max(img_size)/50))
     #       #here might be some problems with filter
     #else:
         #input_image=args['input_image']

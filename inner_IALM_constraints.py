@@ -11,7 +11,7 @@ from skimage import img_as_ubyte
 
 from utils import *
 
-def inner_IALM_constraints(Dotau, J, S_J, tol=1e-7, c=1., mu=-5., max_iter=50):
+def inner_IALM_constraints(Dotau, J, S_J, tol=1e-7, c=1., mu=-5., max_iter=100):
     #well shit then I guess I need to check stuff mu=1.25/np.linalg.norm(Dotau)
     """
     inner_IALM_constraints will solve the programming:
@@ -89,7 +89,7 @@ def inner_IALM_constraints(Dotau, J, S_J, tol=1e-7, c=1., mu=-5., max_iter=50):
         S = np.diag(S)
         #print "U", U
         #print "S", S
-        print "V", V
+        #print "V", V
         shrinkage_S =(S > 1/mu).astype(int) * (S - 1/mu) #because S is non-negative
         A = U.dot(shrinkage_S).dot(V)
 
