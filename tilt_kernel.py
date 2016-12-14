@@ -1,20 +1,6 @@
-import numpy as np
-import skimage.filters as filt
-import math
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.ndimage.filters import sobel
-from skimage import transform
-from skimage import data, io, filters
-from skimage import img_as_ubyte
-from scipy.ndimage import rotate, zoom
-
-
 from jacobi import *
 from inner_IALM_constraints import *
 from utils import *
-
 
 
 def transform_rak(image, tfm_matrix):
@@ -27,60 +13,15 @@ def transform_rak(image, tfm_matrix):
 
     return image_rotated
 
-def convolve(image, filter_matrix):
-    n, m = image.shape
-    n0, m0 = image.shape
-    image_with_bounds = np.hstack((np.zeros((n,1)), image, np.zeros((n,1)) ))
-    n, m = image_with_bounds.shape
-    image_with_bounds = np.vstack((np.zeros((1,m)), image_with_bounds, np.zeros((1,m))))
-    n, m = image_with_bounds.shape
-
-    convolved = np.zeros((n0,m0))
-
-    for i in range(n0):
-        for j in range(m0):
-            convolved[i][j] = np.sum(filter_matrix * image_with_bounds[i:i+3, j:j+3])
-
-    return convolved
-
 
 def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para):
-    '''
-        % tilt_kernel aligns a sub-image of input_image specified by base_points
-        % and focus_size to its frontal, with low-column rank subject to some
-        % linear constraints.
-        % -------------------------input------------------------------------------
-        % input_image:  height-by-width real matrix or height*width*3 real matrix but
-        %               we will only preserve the first channel for the second
-        %               case.
-        % mode:         one of 'euclidean', 'euclidean_notranslation', 'affine', 'affine_notranslation', 'homography',
-        %               'homography_notranslation'.
-        % center:       2-by-1 real vector in row-column co-ordinates, origin of
-        %               the image.
-        % focus_size:   1-by-2 real vector in row-column co-ordinates, size of the
-        %               focus.
-        % initial_tfm_matrix:   3-by-3 matrix, optional, the initial transform
-        %                       matrix. If not specified set it to be eye(3);
-        % para:         parameters for both inner-loop and outer-loop, must be
-        %               specified!
-        %
-        % -------------------------output-----------------------------------------
-        % Dotau:        real matrix with same size as focus_size, aligned images.
-        % A:            low-rank part of Dotau;
-        % E:            sparse-error part of Dotau;
-        % f:            value of objective-function;
-        % tfm_matrix:   resulted transform matrix.
-        % error_sign:   0 or 1, 1 for trival solutions.
-    '''
-
-
     outer_tol = 5e-5
     outer_max_iter = 100
     outer_display_perioud = 1
 
 
     if input_image.shape[2] > 1:
-        input_image = input_image[:,:,0]#*0.299 + input_image[:,:,1]*0.587 + input_image[:,:,2]*0.144
+        input_image = input_image[:,:,0]*0.299 + input_image[:,:,1]*0.587 + input_image[:,:,2]*0.144
 
     input_image = input_image.astype(float)
 
