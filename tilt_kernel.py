@@ -1,6 +1,32 @@
 from jacobi import *
 from inner_IALM_constraints import *
 from utils import *
+import cv2
+
+
+def polina_transform(input_image, tfm_matrix, UData, VData, XData, YData):
+
+    final = np.eye(3)
+
+    #first, translate to a new center:
+    u_trans = np.eye(3)
+    u_trans[0,2] = UData[0]
+    u_trans[1,2] = VData[0]
+
+    #then apply the transform
+    M = np.eye(3)
+    M = np.linalg.inv(tfm_matrix)
+
+    #then do a transform according to XData and YData
+    x_trans = np.eye(3)
+    x_trans[0,2] = -XData[0]
+    x_trans[1,2] = -YData[0]
+
+    final = x_trans.dot(M).dot(u_trans)
+
+    img_1 =  cv2.warpPerspective(input_image, final, (np.sum(np.abs(XData)).astype(int),np.sum(np.abs(YData)).astype(int)))
+
+    return img_1
 
 
 def transform_rak(image, tfm_matrix):
@@ -26,21 +52,24 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
     input_image = input_image.astype(float)
 
     image_center = np.floor(center)
-    focus_size = np.floor(focus_size)
-
+    print 'im_c', image_center
+    fointcus_size = np.floor(focus_size)
+    print 'fs', focus_size
     image_size = input_image.shape
+
+    print image_size
     focus_center = np.zeros((2,1))
     focus_center[0] = int((focus_size[1])/2)
     focus_center[1] =int((focus_size[0])/2)
     A_scale = 1
 
-    UData = [1-image_center[0]-1, image_size[1]-image_center[0]-1]
-    VData = [1-image_center[1]-1, image_size[0]-image_center[1]-1]
-    XData = [1-focus_center[0]-1, focus_size[1]-focus_center[0]-1]
-    YData = [1-focus_center[1]-1, focus_size[0]-focus_center[1]-1]
+    UData = [1-image_center[0], image_size[1]-image_center[0]-1]
+    VData = [1-image_center[1], image_size[0]-image_center[1]-1]
+    XData = [1-focus_center[0], focus_size[1]-focus_center[0]-1]
+    YData = [1-focus_center[1], focus_size[0]-focus_center[1]-1]
 
-    #inp_im = np.hstack((np.zeros((50, 1)),input_image, np.zeros((50,1))))
-    #inp_im = np.vstack((np.zeros((1, 52)),inp_im, np.zeros((1, 52))))
+    #inp_im = np.hstack((np.zeros((input_image.shape[0], 1)),input_image, np.zeros((input_image.shape[0],1))))
+    #inp_im = np.vstack((np.zeros((1, input_image.shape[1] +2 )),inp_im, np.zeros((1, input_image.shape[1]  + 2))))
     #input_image = input_image.astype(np.uint8)
 
     #input_du = (inp_im[2:,:] - inp_im[:-2,:])[:,1:-1]
@@ -48,99 +77,84 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
     input_du = sobel(input_image, 1)
     input_dv = sobel(input_image, 0)
 
-    #sobel
-    #input_du
     Dotau_series = []
 
     tfm_matrix=initial_tfm_matrix
-    #tfm=fliptform(maketform('projective', tfm_matrix'));
-    ##CREATE INVERSE
-    tfm_matrix = initial_tfm_matrix.T
-    trfrm = transform.SimilarityTransform(tfm_matrix)
-    #Dotau = transform.warp(input_image, trfrm)
-    Dotau = transform_rak(input_image, tfm_matrix)
+    #Piece of rotation code
+    #tfm_matrix = initial_tfm_matrix.T
+    #Dotau = transform_rak(input_image, tfm_matrix)
+
+    Dotau = polina_transform(input_image, tfm_matrix, UData, VData, XData, YData)
 
     #print "dotau: {0}".format(np.sum(Dotau))
 
     Dotau_series.append(Dotau)
-    initial_image = Dotau
 
-    #du = transform.warp(input_du, trfrm)
-    #dv = transform.warp(input_dv, trfrm)
-    du = transform_rak(input_du, tfm_matrix)
-    dv = transform_rak(input_dv, tfm_matrix)
-
-
-    #plt.imshow(du)
-    #plt.show()
+    #du = transform_rak(input_du, tfm_matrix)
+    #dv = transform_rak(input_dv, tfm_matrix)
+    du = polina_transform(input_du, tfm_matrix, UData, VData, XData, YData)
+    dv = polina_transform(input_dv, tfm_matrix, UData, VData, XData, YData)
 
     du= du / np.linalg.norm(Dotau, 'fro') - (sum(sum(Dotau*du))) / (np.linalg.norm(Dotau, 'fro')**3) * Dotau
     dv= dv / np.linalg.norm(Dotau, 'fro') - (sum(sum(Dotau*dv))) / (np.linalg.norm(Dotau, 'fro')**3) * Dotau
 
-    #plt.imshow(du)
-    #plt.show()
+    plt.imshow(du, cmap='gray')
+    plt.show()
+
     A_scale = np.linalg.norm(Dotau, 'fro')
     Dotau = Dotau.astype(float) / np.linalg.norm(Dotau, 'fro')
-    #print "dotau_upd: {0}".format(np.sum(Dotau))
+    print 'max', np.max(du)
+    print np.max(dv)
+    print np.min(dv)
+
     tau = tfm2para(tfm_matrix, XData, YData, mode)
+    print tfm_matrix
+    print XData
+    print YData
+
+    print 'ttttt', tau
     J = jacobi(du, dv, XData, YData, tau, mode)
     S = constraints(tau, XData, YData, mode)
 
-    print J[0, :]
     print S
+
     outer_round=0
     pre_f=0
+
+    print tau.shape
 
     while 1:
         outer_round=outer_round+1
         A, E, delta_tau = inner_IALM_constraints(Dotau, J, S)
-        #plt.imshow(A)
-        #plt.show()
-        #print('asas')
-        #if error_sign == -1:
-        #    return
-        #end
-
-        #if mod(outer_round, outer_display_period) == 0:
-        #    disp(['outer_round ',num2str(outer_round),  ', rank(A)=', num2str(rank(A)), ', ||E||_1=', num2str(sum(sum(abs(E))))]);
-        #print 'tau dtau', tau, delta_tau
 
         tau=tau + delta_tau
         print "tau", tau
         print 'dtau', delta_tau
         print outer_round
 
-        tfm_matrix=para2tfm(tau, XData, YData, mode).T
-        #tfm=fliptform(maketform('projective', tfm_matrix'))
-        trfrm = transform.SimilarityTransform(tfm_matrix)
-        Dotau = transform_rak(input_image, tfm_matrix)
+        tfm_matrix=para2tfm(tau, XData, YData, mode)
 
-        #print "tfm mat\n", tfm_matrix
-        #print "dotau_upd: {0}".format(np.sum(Dotau))
+        #Dotau = transform_rak(input_image, tfm_matrix)
+        Dotau = polina_transform(input_image, tfm_matrix, UData, VData, XData, YData)
+
 
         Dotau_series.append(Dotau)
         # judge convergence
-        if (outer_round >= outer_max_iter): #or (abs(f-pre_f) < outer_tol):UPDATE STOPCOND
+        if (outer_round >= outer_max_iter):
             break
 
-        #pre_f=f;
-
-        du = transform_rak(input_du, tfm_matrix)
-        dv = transform_rak(input_dv, tfm_matrix)
+        #du = transform_rak(input_du, tfm_matrix)
+        #dv = transform_rak(input_dv, tfm_matrix)
+        du = polina_transform(input_du, tfm_matrix, UData, VData, XData, YData)
+        dv = polina_transform(input_dv, tfm_matrix, UData, VData, XData, YData)
 
         du= du / np.linalg.norm(Dotau, 'fro') - (sum(sum(Dotau*du))) / (np.linalg.norm(Dotau, 'fro')**3) * Dotau
         dv= dv / np.linalg.norm(Dotau, 'fro') - (sum(sum(Dotau*dv))) / (np.linalg.norm(Dotau, 'fro')**3) * Dotau
         A_scale = np.linalg.norm(Dotau, 'fro')
         Dotau = Dotau / np.linalg.norm(Dotau, 'fro')
 
-        #tau = tfm2para(tfm_matrix, XData, YData, mode)
         J = jacobi(du, dv, XData, YData, tau, mode)
         S = constraints(tau, XData, YData, mode)
 
 
-
-    #Dotau=imtransform(input_image, tfm, 'bilinear', 'UData', UData, 'VData',
-    #VData, 'XData', XData, 'YData', YData, 'size', focus_size);
-    #Dotau_series{1}=Dotau;
-    #initial_image=Dotau;
     return Dotau, A, E, tfm_matrix, UData, VData, XData, YData, A_scale, Dotau_series

@@ -58,15 +58,16 @@ def TILT(input_image, mode, init_points, **kwargs):
 
     img_size=np.shape(args['input_image'])
     img_size=img_size[:2]
+    img_size=img_size[:2]
 
-    print math.ceil(args['blur_kernel_size_k']*max(img_size)/50)
-    print math.ceil(args['blur_kernel_sigma_k']*max(img_size)/50)
-    input_image = GaussianBlur(args['input_image'], (3,3), 4)
+    #print math.ceil(args['blur_kernel_size_k']*max(img_size)/50)
+    #print math.ceil(args['blur_kernel_sigma_k']*max(img_size)/50)
+    input_image = GaussianBlur(args['input_image'], (5,5), 4)
 
     args['figure_no'] = 101
     args['save_path'] = os.path.join(parent_path, 'some_name')
-    print args['center']
-    print args['focus_size']
+    #print args['center']
+    #print args['focus_size']
     Dotau, A, E, tfm_matrix, UData, VData, XData, YData, A_scale, Dotau_series = tilt_kernel(input_image, args['mode'], args['center'], args['focus_size'], args['initial_tfm_matrix'], args)
 
     args = original_args

@@ -23,8 +23,10 @@ def para2tfm(tau, XData, YData, mode):
             insert_b[i] = U[i]
             A[2 * i +1:2 * i,:] = insert_A #error might occur here
             b[2 * i + 1:2 * i] = insert_b
-        solution = A/b #don't know what happening here
-    tfm_matrix = np.transpose(np.reshape([solution,1],(3,3)))
+        solution = np.dot(np.linalg.inv(A), b) #don't know what happening here
+        tfm_matrix = np.transpose(np.reshape([solution,1],(3,3)))
+
+    return tfm_matrix
 
 
 
