@@ -187,7 +187,7 @@ def para2tfm(tau, XData, YData, mode):
         solution = np.linalg.solve(A, b) #don't know what happening here
         #except:
         #    solution = np.random.random(8).reshape(8, 1)
-        tfm_matrix = np.transpose(np.reshape(np.vstack((solution, 1)),(3,3)))
+        tfm_matrix = np.reshape(np.vstack((solution, 1)),(3,3))
 
     return tfm_matrix
 
