@@ -6,22 +6,22 @@ from skimage import data, io, filters
 from TILT import *
 
 if __name__ == '__main__':
-    check = io.imread('building.jpg', as_grey=True)
+    check = cv2.imread('tiny_check.jpg')
 
 
-    #init_points = np.asarray([[0, check.shape[1]], [0, check.shape[0]]])
+    init_points = np.asarray([[0, check.shape[1]], [0, check.shape[0]]])
 
-    init_points = np.asarray([[40, 80], [40, 80]])
+    #init_points = np.asarray([[40, 80], [40, 80]])
 
     plt.imshow(check[init_points[0][0]: init_points[0][1], init_points[1][0]: init_points[1][1]])
     plt.show()
 
 
-    checkie = np.zeros((check.shape[0],check.shape[1],3))
-    checkie[:,:,0] = check
-    checkie[:,:,1] = check
-    checkie[:,:,2] = check
-    Ds, Dotau, A, E = TILT(checkie, 'euclidean', init_points)
+    #checkie = np.zeros((check.shape[0],check.shape[1],3))
+    #checkie[:,:,0] = check
+    #checkie[:,:,1] = check
+    #checkie[:,:,2] = check
+    Ds, Dotau, A, E = TILT(check, 'euclidean', init_points)
 
 
     plt.imshow(A)

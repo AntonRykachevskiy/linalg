@@ -21,23 +21,32 @@ def TILT(input_image, mode, init_points, **kwargs):
 
     #creating boundaries of the image
     expand_rate = 0.8 #WTF is this shit
-    initial_points = init_points
+    initial_points = args['initial_points']
     left_bound = np.ceil(max(initial_points[0,0] - expand_rate * (initial_points[0,1] - initial_points[0,0]), 0))
     right_bound = np.floor(min(initial_points[0,1] + expand_rate * (initial_points[0,1] - initial_points[0,0]), input_image.shape[1]));
     top_bound = np.ceil(max(initial_points[1,0] - expand_rate * (initial_points[1,1] - initial_points[1,0]), 0))
     bottom_bound = np.floor(min(initial_points[1,1] + expand_rate*(initial_points[1,1] - initial_points[1,0]), input_image.shape[0]));
-    new_image = np.zeros((bottom_bound - top_bound + 1, right_bound - left_bound + 1, input_image.shape[2]))
+    new_image = np.zeros((bottom_bound - top_bound , right_bound - left_bound , input_image.shape[2]))
 
-    #for c in range(input_image.shape[2]):
-    #    new_image[:,:,c]=input_image[top_bound:bottom_bound+1, left_bound:right_bound+1, c] #maybe miss one pixel? but whatever
+    print 'bounds'
+    print left_bound
+    print right_bound
+    print  top_bound
+    print bottom_bound
 
-    new_image = input_image #TEMP
+    for c in range(input_image.shape[2]):
+        new_image[:,:,c]=input_image[top_bound:bottom_bound, left_bound:right_bound, c] #maybe miss one pixel? but whatever
+
+    #new_image = input_image #TEMP
 
     #note - here I didn't copy this: args.input_image=uint8(new_image),
     #because that would be handled at input by scikit
     #sorry, to tired to make it not bydlocode
     #args['input_image'] = img_as_ubyte(new_image) #hope this is right
     args['input_image'] = new_image
+
+    plt.imshow(args['input_image'])
+    plt.show()
     args['center'] = args['center'] + np.asarray([1-left_bound, 1-top_bound])
 
 
@@ -68,7 +77,7 @@ def TILT(input_image, mode, init_points, **kwargs):
     args['save_path'] = os.path.join(parent_path, 'some_name')
     #print args['center']
     #print args['focus_size']
-    Dotau, A, E, tfm_matrix, UData, VData, XData, YData, A_scale, Dotau_series = tilt_kernel(input_image, args['mode'], args['center'], args['focus_size'], args['initial_tfm_matrix'], args)
+    Dotau, A, E, tfm_matrix, UData, VData, XData, YData, A_scale, Dotau_series = tilt_kernel(args['input_image'], args['mode'], args['center'], args['focus_size'], args['initial_tfm_matrix'], args)
 
     args = original_args
     tfm_matrix = np.dot(pre_scale_matrix,np.dot(tfm_matrix,np.linalg.inv(pre_scale_matrix)))

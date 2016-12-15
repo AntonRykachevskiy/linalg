@@ -13,6 +13,9 @@ def polina_transform(input_image, tfm_matrix, UData, VData, XData, YData):
     u_trans[0,2] = UData[0]
     u_trans[1,2] = VData[0]
 
+    UV_scale = np.eye(3)
+    UV_scale[0,0] = (UData[1] - UData[0]) / float(input_image.shape[1])
+    UV_scale[1,1] = (VData[1] - VData[0]) / float(input_image.shape[0])
     #then apply the transform
     M = np.eye(3)
     M = np.linalg.inv(tfm_matrix)
@@ -22,7 +25,9 @@ def polina_transform(input_image, tfm_matrix, UData, VData, XData, YData):
     x_trans[0,2] = -XData[0]
     x_trans[1,2] = -YData[0]
 
-    final = x_trans.dot(M).dot(u_trans)
+
+
+    final = x_trans.dot(M).dot(u_trans).dot(UV_scale)
 
     img_1 =  cv2.warpPerspective(input_image, final, (np.sum(np.abs(XData)).astype(int),np.sum(np.abs(YData)).astype(int)))
 
@@ -41,32 +46,33 @@ def transform_rak(image, tfm_matrix):
 
 
 def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para):
+
     outer_tol = 5e-5
-    outer_max_iter = 100
+    outer_max_iter = 300
     outer_display_perioud = 1
 
 
     if input_image.shape[2] > 1:
-        input_image = input_image[:,:,0]*0.299 + input_image[:,:,1]*0.587 + input_image[:,:,2]*0.144
+        input_image = input_image[:,:,0]*0.144 + input_image[:,:,1]*0.587 + input_image[:,:,2]*0.299
 
     input_image = input_image.astype(float)
 
     image_center = np.floor(center)
     print 'im_c', image_center
-    fointcus_size = np.floor(focus_size)
+    focus_size = np.floor(focus_size)
     print 'fs', focus_size
     image_size = input_image.shape
 
     print image_size
     focus_center = np.zeros((2,1))
-    focus_center[0] = int((focus_size[1])/2)
-    focus_center[1] =int((focus_size[0])/2)
+    focus_center[0] = np.floor((focus_size[1])/2)
+    focus_center[1] =np.floor((focus_size[0])/2)
     A_scale = 1
 
     UData = [1-image_center[0], image_size[1]-image_center[0]-1]
     VData = [1-image_center[1], image_size[0]-image_center[1]-1]
-    XData = [1-focus_center[0], focus_size[1]-focus_center[0]-1]
-    YData = [1-focus_center[1], focus_size[0]-focus_center[1]-1]
+    XData = [1-focus_center[0], focus_size[1]-focus_center[0]+1]
+    YData = [1-focus_center[1], focus_size[0]-focus_center[1]+1]
 
     #inp_im = np.hstack((np.zeros((input_image.shape[0], 1)),input_image, np.zeros((input_image.shape[0],1))))
     #inp_im = np.vstack((np.zeros((1, input_image.shape[1] +2 )),inp_im, np.zeros((1, input_image.shape[1]  + 2))))
@@ -84,7 +90,16 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
     #tfm_matrix = initial_tfm_matrix.T
     #Dotau = transform_rak(input_image, tfm_matrix)
 
+
+
+
     Dotau = polina_transform(input_image, tfm_matrix, UData, VData, XData, YData)
+
+    print "Dotauafasdas"
+    print UData
+    print VData
+
+
 
     #print "dotau: {0}".format(np.sum(Dotau))
 
@@ -98,14 +113,12 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
     du= du / np.linalg.norm(Dotau, 'fro') - (sum(sum(Dotau*du))) / (np.linalg.norm(Dotau, 'fro')**3) * Dotau
     dv= dv / np.linalg.norm(Dotau, 'fro') - (sum(sum(Dotau*dv))) / (np.linalg.norm(Dotau, 'fro')**3) * Dotau
 
-    plt.imshow(du, cmap='gray')
-    plt.show()
 
     A_scale = np.linalg.norm(Dotau, 'fro')
     Dotau = Dotau.astype(float) / np.linalg.norm(Dotau, 'fro')
-    print 'max', np.max(du)
-    print np.max(dv)
-    print np.min(dv)
+
+    plt.imshow(du, cmap = 'gray', interpolation='nearest')
+    plt.show()
 
     tau = tfm2para(tfm_matrix, XData, YData, mode)
     print tfm_matrix
@@ -117,11 +130,11 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
     S = constraints(tau, XData, YData, mode)
 
     print S
+    print J
 
     outer_round=0
     pre_f=0
 
-    print tau.shape
 
     while 1:
         outer_round=outer_round+1
