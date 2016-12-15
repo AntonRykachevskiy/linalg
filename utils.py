@@ -227,7 +227,7 @@ def tfm2para(tfm_matrix, XData, YData, mode):
 
     return tau
 
-
+'''
 def transform_point(input_pt, tfm_matrix):
     #if size(input_pt, 1)==1
     if input_pt.shape[0] == 1: #we make input into a column vector
@@ -242,5 +242,19 @@ def transform_point(input_pt, tfm_matrix):
     output_pt = output_pt[0:2, 0]
     if b_row == 1:
         output_pt = output.H
+
+    return output_pt
+'''
+
+def transform_point(input_pt, tfm_matrix):
+    input_pt = input_pt.reshape(2)
+
+    print input_pt
+    pt = np.hstack((input_pt, 1))
+
+    output_pt = tfm_matrix.dot(pt)
+    output_pt = output_pt / float(output_pt[2])
+
+    output_pt = output_pt[:2]
 
     return output_pt

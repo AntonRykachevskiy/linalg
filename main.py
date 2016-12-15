@@ -6,7 +6,7 @@ from skimage import data, io, filters
 from TILT import *
 
 if __name__ == '__main__':
-    check = cv2.imread('building.jpg')
+    check = cv2.imread('building_.jpg')
 
 
     #init_points = np.asarray([[0, check.shape[1]], [0, check.shape[0]]])

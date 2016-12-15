@@ -4,35 +4,46 @@ from utils import *
 import cv2
 
 
-def polina_transform(input_image, tfm_matrix, UData, VData, XData, YData):
+def polina_transform(input_image, tfm_matrix, UData = None, VData = None, XData = None, YData = None, inv_flag = True):
 
     final = np.eye(3)
 
     #first, translate to a new center:
     u_trans = np.eye(3)
-    u_trans[0,2] = UData[0]
-    u_trans[1,2] = VData[0]
-
     UV_scale = np.eye(3)
-    UV_scale[0,0] = (UData[1] - UData[0]) / float(input_image.shape[1])
-    UV_scale[1,1] = (VData[1] - VData[0]) / float(input_image.shape[0])
+    if not UData is None:
+        u_trans[0,2] = UData[0]
+        u_trans[1,2] = VData[0]
+
+        UV_scale[0,0] = (UData[1] - UData[0]) / float(input_image.shape[1])
+        UV_scale[1,1] = (VData[1] - VData[0]) / float(input_image.shape[0])
+
     #then apply the transform
     M = np.eye(3)
-    M = np.linalg.inv(tfm_matrix)
+    if inv_flag:
+        M = np.linalg.inv(tfm_matrix)
+    else:
+        M = tfm_matrix
 
     #then do a transform according to XData and YData
     x_trans = np.eye(3)
-    x_trans[0,2] = -XData[0]
-    x_trans[1,2] = -YData[0]
-
-
+    if not XData is None:
+        x_trans[0,2] = -XData[0]
+        x_trans[1,2] = -YData[0]
 
     final = x_trans.dot(M).dot(u_trans).dot(UV_scale)
 
-    img_1 =  cv2.warpPerspective(input_image, final, (np.sum(np.abs(XData)).astype(int),np.sum(np.abs(YData)).astype(int)))
+    if not XData is None:
+        destination_size = (np.sum(np.abs(XData)).astype(int),np.sum(np.abs(YData)).astype(int))
+    else:
+        destination_size = (int(input_image.shape[1] * tfm_matrix[0, 0]), int(input_image.shape[0] *tfm_matrix[1, 1]))
+        #print destination_size
+
+    img_1 =  cv2.warpPerspective(input_image, final, destination_size)
+
+    #print img_1.shape
 
     return img_1
-
 
 def transform_rak(image, tfm_matrix):
     shift_y, shift_x = np.array(image.shape[:2]) / 2.
@@ -117,8 +128,7 @@ def tilt_kernel(input_image, mode, center, focus_size, initial_tfm_matrix, para)
     A_scale = np.linalg.norm(Dotau, 'fro')
     Dotau = Dotau.astype(float) / np.linalg.norm(Dotau, 'fro')
 
-    plt.imshow(du, cmap = 'gray', interpolation='nearest')
-    plt.show()
+
 
     tau = tfm2para(tfm_matrix, XData, YData, mode)
     print tfm_matrix

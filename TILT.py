@@ -13,7 +13,7 @@ def TILT(input_image, mode, init_points, **kwargs):
     focus_center = args['focus_center']
     XData = np.asarray([1-focus_center[0], args['focus_size'][1]-focus_center[0]])
     YData = np.asarray([1-focus_center[1], args['focus_size'][0]-focus_center[1]])
-
+    args['pyramid'] = 1
     #now, afterwards there is nasty stuff about compute homography
     #hopefully, I can avoid it and initialize tfm to identity
 
@@ -45,8 +45,7 @@ def TILT(input_image, mode, init_points, **kwargs):
     #args['input_image'] = img_as_ubyte(new_image) #hope this is right
     args['input_image'] = new_image
 
-    plt.imshow(args['input_image'])
-    plt.show()
+
     args['center'] = args['center'] + np.asarray([1-left_bound, 1-top_bound])
 
 
@@ -65,19 +64,63 @@ def TILT(input_image, mode, init_points, **kwargs):
     args['center'] = args['center']/pre_scale_matrix[0,0]
     parent_path='./'
 
-    img_size=np.shape(args['input_image'])
-    img_size=img_size[:2]
-    img_size=img_size[:2]
 
-    #print math.ceil(args['blur_kernel_size_k']*max(img_size)/50)
-    #print math.ceil(args['blur_kernel_sigma_k']*max(img_size)/50)
-    input_image = GaussianBlur(args['input_image'], (5,5), 4)
 
-    args['figure_no'] = 101
-    args['save_path'] = os.path.join(parent_path, 'some_name')
-    #print args['center']
-    #print args['focus_size']
-    Dotau, A, E, tfm_matrix, UData, VData, XData, YData, A_scale, Dotau_series = tilt_kernel(args['input_image'], args['mode'], args['center'], args['focus_size'], args['initial_tfm_matrix'], args)
+
+
+    if args['pyramid'] == 1:
+        downsample_matrix = np.array([[0.5, 0, 0], [0, 0.5, 0], [0, 0, 1]])
+        upsample_matrix = np.linalg.inv(downsample_matrix)
+        total_scale = np.ceil(np.max(np.log2(np.min(args['focus_size'])/args['focus_threshold']), 0));
+
+        for scale in range(int(total_scale),-1,-1):
+            # begin each level of the pyramid
+            if total_scale - scale >= args['pyramid_max_level']:
+                break
+
+            # Blur if required
+            #BULA HERNIA
+            if args['blur'] == 1 and scale == 0:
+                input_image = GaussianBlur(args['input_image'], (5,5), 4) ##GIVE KERNEL
+                #input_image=imfilter(args.input_image, fspecial('gaussian', ceil(args.blur_kernel_size_k*2^scale), ceil(args.blur_kernel_sigma_k*2^scale)));
+            else:
+                input_image = args['input_image']
+
+
+            # prepare image and initial tfm_matrix
+            scale_matrix = np.linalg.matrix_power(downsample_matrix, scale)
+            #tfm = maketform('projective', scale_matrix');
+            #input_image=imtransform(input_image, tfm, 'bicubic');
+
+            input_image = polina_transform(input_image, scale_matrix, inv_flag = False)
+
+            print scale_matrix
+            tfm_matrix = scale_matrix.dot(initial_tfm_matrix).dot(np.linalg.inv(scale_matrix))
+
+            center = np.floor(transform_point(args['center'], scale_matrix));
+
+            focus_size=np.floor(args['focus_size']/(2 ** scale))
+
+            #args['save_path'] = fullfile(parent_path, ['pyramid', num2str(scale)]);
+            #args.figure_no=100+total_scale-scale+1;
+            Dotau, A, E, tfm_matrix, UData, VData, XData, YData, A_scale, Dotau_series = tilt_kernel(input_image, args['mode'], center, focus_size, tfm_matrix, args)
+            # update tfm_matrix of the highest-resolution level.
+            initial_tfm_matrix = np.linalg.inv(scale_matrix).dot(tfm_matrix).dot(scale_matrix)
+            args['outer_tol']=args['outer_tol']*args['outer_tol_step']
+
+        tfm_matrix=initial_tfm_matrix
+
+    else:
+        img_size=np.shape(args['input_image'])
+        img_size=img_size[:2]
+        img_size=img_size[:2]
+        input_image = GaussianBlur(args['input_image'], (5,5), 4)
+
+        args['figure_no'] = 101
+        args['save_path'] = os.path.join(parent_path, 'some_name')
+        #print args['center']
+        #print args['focus_size']
+        Dotau, A, E, tfm_matrix, UData, VData, XData, YData, A_scale, Dotau_series = tilt_kernel(args['input_image'], args['mode'], args['center'], args['focus_size'], args['initial_tfm_matrix'], args)
 
     args = original_args
     tfm_matrix = np.dot(pre_scale_matrix,np.dot(tfm_matrix,np.linalg.inv(pre_scale_matrix)))
