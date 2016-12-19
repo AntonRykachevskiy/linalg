@@ -9,9 +9,8 @@ from skimage import transform
 from skimage import data, io, filters
 from skimage import img_as_ubyte
 
-
-
 def parse_TILT_arguments(**kwargs):
+
     my_args = kwargs
 
     if 'initial_tfm_matrix' not in my_args:
@@ -68,8 +67,14 @@ def parse_TILT_arguments(**kwargs):
     if 'branch_max_iter' not in my_args: # in each branch, how much iteration we take.
         my_args['branch_max_iter'] = 10
 
-    if 'branch_max_accuracy' not in my_args: # higher means smaller step-width.
-        my_args['branch_max_accuracy'] = 5
+    if 'branch_accuracy' not in my_args: # higher means smaller step-width.
+        my_args['branch_accuracy'] = 5
+
+    if 'branch_max_rotation' not in my_args:
+        my_args['branch_max_rotation'] = np.pi / 6
+
+    if 'branch_max_skew' not in my_args:
+        my_args['branch_max_skew'] = 1
 
     if 'display_result' not in my_args:
         my_args['display_result'] = 1
@@ -80,11 +85,7 @@ def parse_TILT_arguments(**kwargs):
     if 'save_path' not in my_args:
         my_args['save_path'] = []
 
-    #MORE STUFF FOR BRANCH AND BOUND SKIPPED HERE! ADD LATER
-    #Stuff skipped here because I do it outside
-
     return my_args
-
 
 
 def constraints(tau, XData, YData, mode):
@@ -125,9 +126,6 @@ def constraints(tau, XData, YData, mode):
         S[0, 6] = 1 / N * (2*(X[3]-X[1])*norm_e1 - 2*e1e2*(X[2]-X[0]))
         S[0, 7] = 1 / N * (2*(Y[3]-Y[1])*norm_e1 - 2*e1e2*(Y[2]-Y[0]))
     return S
-    #if mode == 'affine':
-
-
 
 '''def para2tfm(tau, XData, YData, mode):
     """para2tfm will turn tau to tfm_matrix according to mode.
@@ -161,7 +159,7 @@ def para2tfm(tau, XData, YData, mode):
         tfm_matrix[:2,:2]=np.array([[np.cos(tau[0]),-np.sin(tau[0])],[np.sin(tau[0]),np.cos(tau[0])]]).reshape(2,2)
 
     if mode == 'affine':
-        tfm_matrix[0,:2] = np.transpose(tau[:2]) #should accurate here
+        tfm_matrix[0,:2] = np.transpose(tau[:2])
         tfm_matrix[1,:2] = np.transpose(tau[2:])
     if mode == 'homography':
         X = np.array([XData[0], XData[1], XData[1], XData[0]])
@@ -180,12 +178,10 @@ def para2tfm(tau, XData, YData, mode):
             insert_b[0] = -V[i]
             insert_A[1,:]=[X[i], Y[i], 1, 0, 0, 0, - U[i] * X[i], - U[i] * Y[i]]
             insert_b[1] = U[i]
-            A[2 * i:2 * (i+1),:] = insert_A #error might occur here
+            A[2 * i:2 * (i+1),:] = insert_A
             b[2 * i:2 * (i+1)] = insert_b
 
-        #try:
-        solution = np.linalg.solve(A, b) #don't know what happening here
-        #except:
+        solution = np.linalg.solve(A, b)
         #    solution = np.random.random(8).reshape(8, 1)
         tfm_matrix = np.reshape(np.vstack((solution, 1)),(3,3))
 
@@ -224,27 +220,8 @@ def tfm2para(tfm_matrix, XData, YData, mode):
 
         tau = tfm_pt[0:2, :].T.reshape(8, 1)
 
-
     return tau
 
-'''
-def transform_point(input_pt, tfm_matrix):
-    #if size(input_pt, 1)==1
-    if input_pt.shape[0] == 1: #we make input into a column vector
-        input_pt = input_pt.H
-        b_row = 1
-    else:
-        b_row = 0
-
-    input_pt = np.asarray([input_pt, 1]) #please match shapes please
-    output_pt = tfm_matrix.dot(input_pt)
-    output_pt = output_pt/output_pt[2]
-    output_pt = output_pt[0:2, 0]
-    if b_row == 1:
-        output_pt = output.H
-
-    return output_pt
-'''
 
 def transform_point(input_pt, tfm_matrix):
     input_pt = input_pt.reshape(2)
@@ -253,7 +230,7 @@ def transform_point(input_pt, tfm_matrix):
     pt = np.hstack((input_pt, 1))
 
     output_pt = tfm_matrix.dot(pt)
-    output_pt = output_pt / float(output_pt[2])
+    output_pt /= float(output_pt[2])
 
     output_pt = output_pt[:2]
 
